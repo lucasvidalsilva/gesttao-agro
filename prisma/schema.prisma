@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                  String            @id @default(cuid())
+  name                String
+  email               String            @unique
+  emailVerified       DateTime?
+  passwordHash        String
+  image               String?
+  role                Role              @default(COLABORADOR)
+  active              Boolean           @default(true)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  accounts            Account[]
+  documentoUploads    DocumentoUpload[]
+  historicos          HistoricoEvento[]
+  projetosCriados     Projeto[]         @relation("ProjetoCriador")
+  projetosResponsavel Projeto[]         @relation("ProjetoResponsavel")
+  sessions            Session[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Cliente {
+  id             String            @id @default(cuid())
+  nome           String
+  cpfCnpj        String            @unique
+  telefone       String?
+  email          String?
+  dataNascimento DateTime?
+  dataEntrada    DateTime          @default(now())
+  observacoes    String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  documentos     DocumentoUpload[] @relation("ClienteDocumentos")
+  projetos       Projeto[]
+
+  @@map("clientes")
+}
+
+model Projeto {
+  id               String               @id @default(cuid())
+  nome             String
+  status           KanbanStatus         @default(INICIAL)
+  dataInicio       DateTime
+  dataEnvioAnalise DateTime?
+  dataResposta     DateTime?
+  dataOcorrencia   DateTime?
+  observacao       String?
+  valorProjeto     Float?
+  comissao         Float?
+  dataPagamento    DateTime?
+  posicao          Int                  @default(0)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  clienteId        String
+  responsavelId    String
+  criadorId        String
+  checklistItems   DocumentoChecklist[]
+  documentos       DocumentoUpload[]    @relation("ProjetoDocumentos")
+  historicos       HistoricoEvento[]
+  cliente          Cliente              @relation(fields: [clienteId], references: [id])
+  criador          User                 @relation("ProjetoCriador", fields: [criadorId], references: [id])
+  responsavel      User                 @relation("ProjetoResponsavel", fields: [responsavelId], references: [id])
+  transicoes       TransicaoKanban[]
+
+  @@map("projetos")
+}
+
+model DocumentoChecklist {
+  id          String           @id @default(cuid())
+  nome        String
+  descricao   String?
+  obrigatorio Boolean          @default(true)
+  ordem       Int              @default(0)
+  enviado     Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  projetoId   String
+  projeto     Projeto          @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  documento   DocumentoUpload? @relation("ChecklistDocumento")
+
+  @@map("documento_checklist")
+}
+
+model DocumentoUpload {
+  id              String              @id @default(cuid())
+  nomeOriginal    String
+  nomeStorage     String
+  url             String
+  tamanho         Int
+  tipo            String
+  createdAt       DateTime            @default(now())
+  uploadPorId     String
+  projetoId       String?
+  clienteId       String?
+  checklistItemId String?             @unique
+  checklistItem   DocumentoChecklist? @relation("ChecklistDocumento", fields: [checklistItemId], references: [id])
+  cliente         Cliente?            @relation("ClienteDocumentos", fields: [clienteId], references: [id], onDelete: Cascade)
+  projeto         Projeto?            @relation("ProjetoDocumentos", fields: [projetoId], references: [id], onDelete: Cascade)
+  uploadPor       User                @relation(fields: [uploadPorId], references: [id])
+
+  @@map("documento_uploads")
+}
+
+model TransicaoKanban {
+  id             String       @id @default(cuid())
+  statusAnterior KanbanStatus
+  statusNovo     KanbanStatus
+  dados          Json?
+  createdAt      DateTime     @default(now())
+  projetoId      String
+  projeto        Projeto      @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  @@map("transicoes_kanban")
+}
+
+model HistoricoEvento {
+  id        String     @id @default(cuid())
+  tipo      TipoEvento
+  descricao String
+  dados     Json?
+  createdAt DateTime   @default(now())
+  projetoId String?
+  userId    String
+  projeto   Projeto?   @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@map("historico_eventos")
+}
+
+enum Role {
+  ADMIN
+  COLABORADOR
+  VISUALIZADOR
+}
+
+enum KanbanStatus {
+  INICIAL
+  EM_ANALISE
+  COM_PENDENCIA
+  LIBERADO
+  PAGO
+}
+
+enum TipoEvento {
+  CRIACAO
+  MOVIMENTACAO
+  UPLOAD
+  ALTERACAO
+  OBSERVACAO
+}
