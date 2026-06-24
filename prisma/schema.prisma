@@ -1,11 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -17,6 +17,8 @@ model User {
   image               String?
   role                Role              @default(COLABORADOR)
   active              Boolean           @default(true)
+  twoFactorSecret     String?
+  twoFactorEnabled    Boolean           @default(false)
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
   accounts            Account[]
@@ -193,6 +195,9 @@ enum TipoEvento {
   CRIACAO
   MOVIMENTACAO
   UPLOAD
+  DOWNLOAD
+  EXCLUSAO
+  AUTENTICACAO
   ALTERACAO
   OBSERVACAO
 }

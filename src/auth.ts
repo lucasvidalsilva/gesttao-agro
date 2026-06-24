@@ -1,14 +1,24 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { verifyTotp } from "@/utils/totp";
+
+export class MfaRequiredError extends CredentialsSignin {
+  code = "mfa_required";
+}
+
+export class InvalidMfaError extends CredentialsSignin {
+  code = "invalid_mfa";
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
+    maxAge: 24 * 60 * 60, // Sessão expira em 24 horas
   },
   pages: {
     signIn: "/login",
@@ -19,6 +29,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Senha", type: "password" },
+        mfaCode: { label: "MFA Code", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -27,6 +38,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const email = credentials.email as string;
         const password = credentials.password as string;
+        const mfaCode = credentials.mfaCode as string | undefined;
 
         // Rate limit: máximo de 5 tentativas de login por minuto por e-mail
         const limiter = rateLimit(`login:${email.toLowerCase()}`, {
@@ -50,6 +62,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!isPasswordValid) {
           return null;
+        }
+
+        // Se o usuário for ADMIN e tiver MFA ativo
+        if (user.role === "ADMIN" && user.twoFactorEnabled) {
+          if (!mfaCode) {
+            throw new MfaRequiredError();
+          }
+
+          const isValid = await verifyTotp(user.twoFactorSecret || "", mfaCode);
+          if (!isValid) {
+            throw new InvalidMfaError();
+          }
         }
 
         return {
@@ -76,6 +100,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         (session.user as { role: string }).role = token.role as string;
       }
       return session;
+    },
+  },
+  events: {
+    async signIn({ user }) {
+      if (user?.id) {
+        await prisma.historicoEvento.create({
+          data: {
+            tipo: "AUTENTICACAO",
+            descricao: `Login efetuado com sucesso por ${user.name || user.email}`,
+            userId: user.id,
+            dados: { email: user.email },
+          },
+        });
+      }
+    },
+    async signOut({ token }) {
+      if (token?.id) {
+        await prisma.historicoEvento.create({
+          data: {
+            tipo: "AUTENTICACAO",
+            descricao: `Sessão encerrada (Logout) por ${token.name || token.email}`,
+            userId: token.id as string,
+            dados: { email: token.email },
+          },
+        });
+      }
     },
   },
 });
