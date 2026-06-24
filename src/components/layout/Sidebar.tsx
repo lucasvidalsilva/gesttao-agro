@@ -11,6 +11,7 @@ import {
   LogOut,
   Leaf,
   User,
+  Shield,
 } from "lucide-react";
 
 interface NavItem {
@@ -165,10 +166,17 @@ export function Sidebar({ userRole }: SidebarProps) {
       </nav>
 
       {/* Bottom Section */}
-      <div className="border-t border-border p-3">
+      <div className="border-t border-border p-3 space-y-1">
+        <Link
+          href="/privacidade"
+          className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-text-secondary transition-all duration-200 hover:bg-slate-50 hover:text-brand-600"
+        >
+          <Shield className="h-[16px] w-[16px] flex-shrink-0 text-text-tertiary transition-colors duration-200 group-hover:text-brand-500" />
+          Termos & Privacidade (LGPD)
+        </Link>
         <button
           onClick={handleLogout}
-          className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-secondary transition-all duration-200 hover:bg-red-50 hover:text-red-600"
+          className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-text-secondary transition-all duration-200 hover:bg-red-50 hover:text-red-600"
         >
           <LogOut className="h-[18px] w-[18px] flex-shrink-0 text-text-tertiary transition-colors duration-200 group-hover:text-red-500" />
           Sair
