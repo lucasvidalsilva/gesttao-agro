@@ -1,4 +1,4 @@
-import { KanbanStatus } from "@prisma/client";
+import { KanbanStatus } from "@/types";
 
 export interface KanbanColumnConfig {
   id: KanbanStatus;

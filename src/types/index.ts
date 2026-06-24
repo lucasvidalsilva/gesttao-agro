@@ -1,4 +1,29 @@
-import { Prisma, KanbanStatus, Role, TipoEvento } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+
+export enum Role {
+  ADMIN = "ADMIN",
+  COLABORADOR = "COLABORADOR",
+  VISUALIZADOR = "VISUALIZADOR",
+}
+
+export enum KanbanStatus {
+  INICIAL = "INICIAL",
+  EM_ANALISE = "EM_ANALISE",
+  COM_PENDENCIA = "COM_PENDENCIA",
+  LIBERADO = "LIBERADO",
+  PAGO = "PAGO",
+}
+
+export enum TipoEvento {
+  CRIACAO = "CRIACAO",
+  MOVIMENTACAO = "MOVIMENTACAO",
+  UPLOAD = "UPLOAD",
+  DOWNLOAD = "DOWNLOAD",
+  EXCLUSAO = "EXCLUSAO",
+  AUTENTICACAO = "AUTENTICACAO",
+  ALTERACAO = "ALTERACAO",
+  OBSERVACAO = "OBSERVACAO",
+}
 
 export type ProjetoComRelacoes = Prisma.ProjetoGetPayload<{
   include: {
@@ -62,8 +87,6 @@ export type HistoricoComUsuario = Prisma.HistoricoEventoGetPayload<{
     };
   };
 }>;
-
-export type { KanbanStatus, Role, TipoEvento };
 
 export type KanbanColumn = {
   id: KanbanStatus;

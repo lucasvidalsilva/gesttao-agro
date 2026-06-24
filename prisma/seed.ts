@@ -1,4 +1,5 @@
-import { PrismaClient, Role, KanbanStatus, TipoEvento } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
+import { Role, KanbanStatus, TipoEvento } from "../src/types";
 import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();

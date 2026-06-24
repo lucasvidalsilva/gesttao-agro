@@ -15,7 +15,7 @@ model User {
   emailVerified       DateTime?
   passwordHash        String
   image               String?
-  role                Role              @default(COLABORADOR)
+  role                String            @default("COLABORADOR")
   active              Boolean           @default(true)
   twoFactorSecret     String?
   twoFactorEnabled    Boolean           @default(false)
@@ -89,7 +89,7 @@ model Cliente {
 model Projeto {
   id               String               @id @default(cuid())
   nome             String
-  status           KanbanStatus         @default(INICIAL)
+  status           String               @default("INICIAL")
   dataInicio       DateTime
   dataEnvioAnalise DateTime?
   dataResposta     DateTime?
@@ -153,9 +153,9 @@ model DocumentoUpload {
 
 model TransicaoKanban {
   id             String       @id @default(cuid())
-  statusAnterior KanbanStatus
-  statusNovo     KanbanStatus
-  dados          Json?
+  statusAnterior String
+  statusNovo     String
+  dados          String?
   createdAt      DateTime     @default(now())
   projetoId      String
   projeto        Projeto      @relation(fields: [projetoId], references: [id], onDelete: Cascade)
@@ -165,9 +165,9 @@ model TransicaoKanban {
 
 model HistoricoEvento {
   id        String     @id @default(cuid())
-  tipo      TipoEvento
+  tipo      String
   descricao String
-  dados     Json?
+  dados     String?
   createdAt DateTime   @default(now())
   projetoId String?
   userId    String
@@ -175,29 +175,4 @@ model HistoricoEvento {
   user      User       @relation(fields: [userId], references: [id])
 
   @@map("historico_eventos")
-}
-
-enum Role {
-  ADMIN
-  COLABORADOR
-  VISUALIZADOR
-}
-
-enum KanbanStatus {
-  INICIAL
-  EM_ANALISE
-  COM_PENDENCIA
-  LIBERADO
-  PAGO
-}
-
-enum TipoEvento {
-  CRIACAO
-  MOVIMENTACAO
-  UPLOAD
-  DOWNLOAD
-  EXCLUSAO
-  AUTENTICACAO
-  ALTERACAO
-  OBSERVACAO
 }

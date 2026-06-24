@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { formatCPFCNPJ, formatTelefone, formatData } from "@/utils/format";
 import { KANBAN_COLUMNS } from "@/lib/kanban-rules";
 import ClienteFormModal from "@/components/forms/ClienteFormModal";
-import type { KanbanStatus } from "@prisma/client";
+import type { KanbanStatus } from "@/types";
 
 interface ProjetoItem {
   id: string;

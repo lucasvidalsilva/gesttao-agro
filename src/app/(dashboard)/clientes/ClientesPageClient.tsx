@@ -5,7 +5,7 @@ import { Search, Plus, Users, Phone, Mail } from "lucide-react";
 import Link from "next/link";
 import ClienteFormModal from "@/components/forms/ClienteFormModal";
 import { formatCPFCNPJ, formatTelefone } from "@/utils/format";
-import type { KanbanStatus } from "@prisma/client";
+import type { KanbanStatus } from "@/types";
 
 interface ClienteProjeto {
   id: string;

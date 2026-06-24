@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
-import { KanbanStatus } from "@prisma/client";
+import { KanbanStatus } from "@/types";
 import {
   criarProjetoSchema,
   transicaoAnaliseSchema,
