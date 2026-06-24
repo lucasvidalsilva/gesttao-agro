@@ -59,6 +59,15 @@ export async function criarCliente(formData: FormData): Promise<ActionResult> {
     },
   });
 
+  await prisma.historicoEvento.create({
+    data: {
+      tipo: "ALTERACAO",
+      descricao: `Cliente "${cliente.nome}" cadastrado no sistema`,
+      userId: session.user.id,
+      dados: JSON.stringify({ clienteId: cliente.id, nome: cliente.nome }),
+    },
+  });
+
   revalidatePath("/clientes");
   return { success: true, data: { clienteId: cliente.id } };
 }
@@ -102,7 +111,7 @@ export async function atualizarCliente(
     return { success: false, error: "CPF/CNPJ já cadastrado para outro cliente" };
   }
 
-  await prisma.cliente.update({
+  const updatedCliente = await prisma.cliente.update({
     where: { id },
     data: {
       nome: parsed.data.nome,
@@ -116,26 +125,70 @@ export async function atualizarCliente(
     },
   });
 
+  await prisma.historicoEvento.create({
+    data: {
+      tipo: "ALTERACAO",
+      descricao: `Cadastro do cliente "${updatedCliente.nome}" atualizado`,
+      userId: session.user.id,
+      dados: JSON.stringify({ clienteId: id, nome: updatedCliente.nome }),
+    },
+  });
+
   revalidatePath("/clientes");
   revalidatePath(`/clientes/${id}`);
   return { success: true };
 }
 
 export async function buscarClientes(busca?: string) {
-  const where = busca
-    ? {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return [];
+  }
+
+  const where: Record<string, any> = {};
+
+  // RLS Lógico: Se o usuário NÃO for ADMIN, ele só vê clientes vinculados a projetos dele
+  if (session.user.role !== "ADMIN") {
+    where.projetos = {
+      some: {
         OR: [
-          { nome: { contains: busca, mode: "insensitive" as const } },
-          { cpfCnpj: { contains: busca.replace(/\D/g, "") } },
-          { email: { contains: busca, mode: "insensitive" as const } },
+          { responsavelId: session.user.id },
+          { criadorId: session.user.id },
         ],
-      }
-    : {};
+      },
+    };
+  }
+
+  if (busca) {
+    const buscaFilter = {
+      OR: [
+        { nome: { contains: busca } },
+        { cpfCnpj: { contains: busca.replace(/\D/g, "") } },
+        { email: { contains: busca } },
+      ],
+    };
+
+    if (session.user.role !== "ADMIN") {
+      where.AND = [
+        { projetos: where.projetos },
+        buscaFilter,
+      ];
+      delete where.projetos;
+    } else {
+      where.OR = buscaFilter.OR;
+    }
+  }
 
   const clientes = await prisma.cliente.findMany({
     where,
     include: {
       projetos: {
+        where: session.user.role !== "ADMIN" ? {
+          OR: [
+            { responsavelId: session.user.id },
+            { criadorId: session.user.id },
+          ],
+        } : undefined,
         select: { id: true, nome: true, status: true },
       },
       _count: {
@@ -145,26 +198,67 @@ export async function buscarClientes(busca?: string) {
     orderBy: { nome: "asc" },
   });
 
-  return clientes;
+  return clientes as any;
 }
 
 export async function buscarClienteDetalhe(clienteId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return null;
+  }
+
+  // RLS Lógico: Se não for ADMIN, verifica se o usuário está associado a algum projeto deste cliente
+  if (session.user.role !== "ADMIN") {
+    const count = await prisma.projeto.count({
+      where: {
+        clienteId,
+        OR: [
+          { responsavelId: session.user.id },
+          { criadorId: session.user.id },
+        ],
+      },
+    });
+
+    if (count === 0) {
+      return null; // Acesso negado
+    }
+  }
+
   const cliente = await prisma.cliente.findUnique({
     where: { id: clienteId },
     include: {
       projetos: {
+        where: session.user.role !== "ADMIN" ? {
+          OR: [
+            { responsavelId: session.user.id },
+            { criadorId: session.user.id },
+          ],
+        } : undefined,
         include: {
           responsavel: { select: { name: true } },
         },
         orderBy: { createdAt: "desc" },
       },
       documentos: {
+        where: session.user.role !== "ADMIN" ? {
+          OR: [
+            { uploadPorId: session.user.id },
+            {
+              projeto: {
+                OR: [
+                  { responsavelId: session.user.id },
+                  { criadorId: session.user.id },
+                ],
+              },
+            },
+          ],
+        } : undefined,
         orderBy: { createdAt: "desc" },
       },
     },
   });
 
-  return cliente;
+  return cliente as any;
 }
 
 export async function buscarClientesSimples() {

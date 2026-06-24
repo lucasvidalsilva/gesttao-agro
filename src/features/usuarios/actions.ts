@@ -52,6 +52,15 @@ export async function criarUsuario(formData: FormData): Promise<ActionResult> {
     },
   });
 
+  await prisma.historicoEvento.create({
+    data: {
+      tipo: "ALTERACAO",
+      descricao: `Novo colaborador "${usuario.name}" criado no sistema`,
+      userId: session.user.id,
+      dados: JSON.stringify({ userId: usuario.id, email: usuario.email, role: usuario.role }),
+    },
+  });
+
   revalidatePath("/usuarios");
   return { success: true, data: { userId: usuario.id } };
 }
@@ -85,9 +94,18 @@ export async function resetarSenha(formData: FormData): Promise<ActionResult> {
 
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
 
-  await prisma.user.update({
+  const updatedUser = await prisma.user.update({
     where: { id: parsed.data.userId },
     data: { passwordHash },
+  });
+
+  await prisma.historicoEvento.create({
+    data: {
+      tipo: "ALTERACAO",
+      descricao: `Senha do colaborador "${updatedUser.name}" redefinida`,
+      userId: session.user.id,
+      dados: JSON.stringify({ userId: updatedUser.id, email: updatedUser.email }),
+    },
   });
 
   revalidatePath("/usuarios");
@@ -109,9 +127,18 @@ export async function desativarUsuario(userId: string): Promise<ActionResult> {
     return { success: false, error: "Usuário não encontrado" };
   }
 
-  await prisma.user.update({
+  const updatedUser = await prisma.user.update({
     where: { id: userId },
     data: { active: !user.active },
+  });
+
+  await prisma.historicoEvento.create({
+    data: {
+      tipo: "ALTERACAO",
+      descricao: `Colaborador "${updatedUser.name}" ${updatedUser.active ? "ativado" : "desativado"} no sistema`,
+      userId: session.user.id,
+      dados: JSON.stringify({ userId: updatedUser.id, email: updatedUser.email, active: updatedUser.active }),
+    },
   });
 
   revalidatePath("/usuarios");

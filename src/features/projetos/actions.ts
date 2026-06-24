@@ -86,10 +86,10 @@ export async function criarProjeto(formData: FormData): Promise<ActionResult> {
       descricao: `Projeto "${parsed.data.nome}" criado para o cliente ${clienteExists.nome}`,
       projetoId: projeto.id,
       userId: session.user.id,
-      dados: {
+      dados: JSON.stringify({
         clienteNome: clienteExists.nome,
         dataInicio: parsed.data.dataInicio,
-      },
+      }),
     },
   });
 
@@ -120,7 +120,19 @@ export async function moverCard(
     return { success: false, error: "Projeto não encontrado" };
   }
 
-  if (!isTransicaoPermitida(projeto.status, novoStatus)) {
+  // RLS Lógico: Se não for ADMIN, o colaborador só pode mover projetos que ele criou ou pelos quais é responsável
+  if (
+    session.user.role !== "ADMIN" &&
+    projeto.responsavelId !== session.user.id &&
+    projeto.criadorId !== session.user.id
+  ) {
+    return {
+      success: false,
+      error: "Acesso negado: Você não possui permissão para gerenciar este projeto",
+    };
+  }
+
+  if (!isTransicaoPermitida(projeto.status as KanbanStatus, novoStatus)) {
     return {
       success: false,
       error: `Transição de "${projeto.status}" para "${novoStatus}" não é permitida`,
@@ -239,7 +251,7 @@ export async function moverCard(
         projetoId,
         statusAnterior,
         statusNovo: novoStatus,
-        dados: dadosTransicao as any,
+        dados: JSON.stringify(dadosTransicao),
       },
     }),
     prisma.historicoEvento.create({
@@ -248,7 +260,7 @@ export async function moverCard(
         descricao: `Projeto movido de "${statusAnterior}" para "${novoStatus}"`,
         projetoId,
         userId: session.user.id,
-        dados: { statusAnterior, statusNovo: novoStatus, ...dadosTransicao } as any,
+        dados: JSON.stringify({ statusAnterior, statusNovo: novoStatus, ...dadosTransicao }),
       },
     }),
   ]);
@@ -262,7 +274,24 @@ export async function buscarProjetos(filtros?: {
   status?: KanbanStatus;
   busca?: string;
 }) {
-  const where: Record<string, unknown> = {};
+  const session = await auth();
+  if (!session?.user?.id) {
+    return [];
+  }
+
+  const where: Record<string, any> = {};
+
+  // RLS Lógico: Se o usuário NÃO for ADMIN, ele só pode ver os projetos onde é criador ou responsável
+  if (session.user.role !== "ADMIN") {
+    where.AND = [
+      {
+        OR: [
+          { responsavelId: session.user.id },
+          { criadorId: session.user.id },
+        ],
+      },
+    ];
+  }
 
   if (filtros?.responsavelId) {
     where.responsavelId = filtros.responsavelId;
@@ -271,14 +300,21 @@ export async function buscarProjetos(filtros?: {
     where.status = filtros.status;
   }
   if (filtros?.busca) {
-    where.OR = [
-      { nome: { contains: filtros.busca, mode: "insensitive" } },
-      {
-        cliente: {
-          nome: { contains: filtros.busca, mode: "insensitive" },
+    const buscaFilter = {
+      OR: [
+        { nome: { contains: filtros.busca } },
+        {
+          cliente: {
+            nome: { contains: filtros.busca },
+          },
         },
-      },
-    ];
+      ],
+    };
+    if (where.AND) {
+      where.AND.push(buscaFilter);
+    } else {
+      where.AND = [buscaFilter];
+    }
   }
 
   const projetos = await prisma.projeto.findMany({
@@ -290,10 +326,16 @@ export async function buscarProjetos(filtros?: {
     orderBy: { posicao: "asc" },
   });
 
-  return projetos;
+  // Em SQLite, os campos status e enums são string, o TypeScript resolve com typecast
+  return projetos as any;
 }
 
 export async function buscarProjetoDetalhe(projetoId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return null;
+  }
+
   const projeto = await prisma.projeto.findUnique({
     where: { id: projetoId },
     include: {
@@ -321,7 +363,20 @@ export async function buscarProjetoDetalhe(projetoId: string) {
     },
   });
 
-  return projeto;
+  if (!projeto) {
+    return null;
+  }
+
+  // RLS Lógico: Se o usuário NÃO for ADMIN, ele só pode ver se for criador ou responsável do projeto
+  if (
+    session.user.role !== "ADMIN" &&
+    projeto.responsavelId !== session.user.id &&
+    projeto.criadorId !== session.user.id
+  ) {
+    return null;
+  }
+
+  return projeto as any;
 }
 
 export async function reordenarCards(
@@ -334,6 +389,24 @@ export async function reordenarCards(
 
   if (session.user.role === "VISUALIZADOR") {
     return { success: false, error: "Acesso negado: Perfil visualizador não possui permissão de escrita" };
+  }
+
+  // RLS Lógico: Se não for ADMIN, verificar se todos os projetos pertencem ao usuário
+  if (session.user.role !== "ADMIN") {
+    const ids = updates.map((u) => u.id);
+    const count = await prisma.projeto.count({
+      where: {
+        id: { in: ids },
+        OR: [
+          { responsavelId: session.user.id },
+          { criadorId: session.user.id },
+        ],
+      },
+    });
+
+    if (count !== updates.length) {
+      return { success: false, error: "Acesso negado: Um ou mais projetos não pertencem a você" };
+    }
   }
 
   await prisma.$transaction(
