@@ -10,6 +10,7 @@ import {
   UserCog,
   LogOut,
   Leaf,
+  User,
 } from "lucide-react";
 
 interface NavItem {
@@ -37,6 +38,12 @@ const adminNavigationItems: NavItem[] = [
     label: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
+    adminOnly: true,
+  },
+  {
+    label: "Meu Perfil",
+    href: "/perfil",
+    icon: User,
     adminOnly: true,
   },
   {

@@ -182,3 +182,116 @@ export async function buscarColaboradores() {
   });
   return colaboradores;
 }
+
+export async function obterStatusMfa() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { enabled: false, email: "" };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { twoFactorEnabled: true, email: true },
+  });
+
+  return {
+    enabled: user?.twoFactorEnabled || false,
+    email: user?.email || "",
+  };
+}
+
+export async function gerarSegredoMfa() {
+  const session = await auth();
+  if (!session?.user?.id || session.user.role !== "ADMIN") {
+    throw new Error("Não autorizado");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+  });
+
+  if (!user) {
+    throw new Error("Usuário não encontrado");
+  }
+
+  const { generateSecret, getProvisioningUri } = await import("@/utils/totp");
+  const secret = generateSecret();
+  const uri = getProvisioningUri(user.email, secret);
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(uri)}`;
+
+  return { secret, qrCodeUrl };
+}
+
+export async function ativarMfa(secret: string, code: string): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user?.id || session.user.role !== "ADMIN") {
+    return { success: false, error: "Não autorizado" };
+  }
+
+  const { verifyTotp } = await import("@/utils/totp");
+  const isValid = await verifyTotp(secret, code);
+  if (!isValid) {
+    return { success: false, error: "Código de verificação inválido." };
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: {
+      twoFactorSecret: secret,
+      twoFactorEnabled: true,
+    },
+  });
+
+  // Gravar log de auditoria
+  await prisma.historicoEvento.create({
+    data: {
+      tipo: "ALTERACAO",
+      descricao: `Autenticação Multifator (MFA) ativada para o administrador "${session.user.name}"`,
+      userId: session.user.id,
+      dados: JSON.stringify({ email: session.user.email, action: "mfa_enabled" }),
+    },
+  });
+
+  return { success: true };
+}
+
+export async function desativarMfa(code: string): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user?.id || session.user.role !== "ADMIN") {
+    return { success: false, error: "Não autorizado" };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+  });
+
+  if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+    return { success: false, error: "MFA não está ativo nesta conta." };
+  }
+
+  const { verifyTotp } = await import("@/utils/totp");
+  const isValid = await verifyTotp(user.twoFactorSecret, code);
+  if (!isValid) {
+    return { success: false, error: "Código de verificação inválido." };
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: {
+      twoFactorSecret: null,
+      twoFactorEnabled: false,
+    },
+  });
+
+  // Gravar log de auditoria
+  await prisma.historicoEvento.create({
+    data: {
+      tipo: "ALTERACAO",
+      descricao: `Autenticação Multifator (MFA) desativada para o administrador "${session.user.name}"`,
+      userId: session.user.id,
+      dados: JSON.stringify({ email: session.user.email, action: "mfa_disabled" }),
+    },
+  });
+
+  return { success: true };
+}

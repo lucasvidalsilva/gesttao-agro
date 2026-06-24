@@ -13,6 +13,10 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Estados do MFA
+  const [mfaCode, setMfaCode] = useState("");
+  const [showMfa, setShowMfa] = useState(false);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -22,11 +26,20 @@ export default function LoginPage() {
       const result = await signIn("credentials", {
         email,
         password,
+        mfaCode: showMfa ? mfaCode : undefined,
         redirect: false,
       });
 
       if (result?.error) {
-        setError("E-mail ou senha inválidos.");
+        // NextAuth v5 repassa o código do erro customizado
+        if (result.error === "mfa_required" || result.error.includes("mfa_required")) {
+          setShowMfa(true);
+          setError("");
+        } else if (result.error === "invalid_mfa" || result.error.includes("invalid_mfa")) {
+          setError("Código MFA inválido. Verifique o aplicativo autenticador.");
+        } else {
+          setError("E-mail ou senha inválidos.");
+        }
       } else {
         router.push("/projetos");
         router.refresh();
@@ -113,68 +126,98 @@ export default function LoginPage() {
             </div>
             
             <h2 className="text-3xl font-bold text-white tracking-tight">
-              Acesse sua conta
+              {showMfa ? "Verificação de Segurança" : "Acesse sua conta"}
             </h2>
             <p className="text-sm text-slate-400">
-              Entre com suas credenciais de consultoria para acessar o painel.
+              {showMfa 
+                ? "Insira o código gerado no seu aplicativo de autenticação." 
+                : "Entre com suas credenciais de consultoria para acessar o painel."}
             </p>
           </div>
 
           {/* Form wrapper with elegant card */}
           <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8 backdrop-blur-xl shadow-2xl space-y-6">
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Email */}
-              <div className="space-y-2">
-                <label htmlFor="email" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                  E-mail institucional
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500" />
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="exemplo@gestaoagro.com"
-                    required
-                    disabled={loading}
-                    className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-800 bg-slate-950/80 text-white placeholder:text-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 hover:border-slate-700"
-                  />
-                </div>
-              </div>
+              {!showMfa ? (
+                <>
+                  {/* Email */}
+                  <div className="space-y-2">
+                    <label htmlFor="email" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      E-mail institucional
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500" />
+                      <input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="exemplo@gestaoagro.com"
+                        required
+                        disabled={loading}
+                        className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-800 bg-slate-950/80 text-white placeholder:text-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 hover:border-slate-700"
+                      />
+                    </div>
+                  </div>
 
-              {/* Password */}
-              <div className="space-y-2">
-                <label htmlFor="password" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                  Senha
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500" />
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    disabled={loading}
-                    className="w-full pl-11 pr-11 py-3 rounded-2xl border border-slate-800 bg-slate-950/80 text-white placeholder:text-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 hover:border-slate-700"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                    tabIndex={-1}
-                    disabled={loading}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4.5 h-4.5" />
-                    ) : (
-                      <Eye className="w-4.5 h-4.5" />
-                    )}
-                  </button>
-                </div>
-              </div>
+                  {/* Password */}
+                  <div className="space-y-2">
+                    <label htmlFor="password" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      Senha
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500" />
+                      <input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        disabled={loading}
+                        className="w-full pl-11 pr-11 py-3 rounded-2xl border border-slate-800 bg-slate-950/80 text-white placeholder:text-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 hover:border-slate-700"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                        tabIndex={-1}
+                        disabled={loading}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-4.5 h-4.5" />
+                        ) : (
+                          <Eye className="w-4.5 h-4.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* MFA Code */}
+                  <div className="space-y-2">
+                    <label htmlFor="mfaCode" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      Código de Autenticação (MFA)
+                    </label>
+                    <div className="relative">
+                      <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500" />
+                      <input
+                        id="mfaCode"
+                        type="text"
+                        maxLength={6}
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="000000"
+                        required
+                        disabled={loading}
+                        autoFocus
+                        className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-800 bg-slate-950/80 text-white placeholder:text-slate-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 hover:border-slate-700 text-center tracking-widest text-lg font-bold"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Error Box */}
               {error && (
@@ -195,18 +238,37 @@ export default function LoginPage() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Entrando no painel...
+                    {showMfa ? "Verificando token..." : "Entrando no painel..."}
                   </>
                 ) : (
-                  "Acessar Painel"
+                  showMfa ? "Confirmar e Entrar" : "Acessar Painel"
                 )}
               </button>
+
+              {showMfa && (
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => {
+                    setShowMfa(false);
+                    setMfaCode("");
+                  }}
+                  className="w-full text-center text-xs text-slate-400 hover:text-slate-200 transition-colors mt-2 block"
+                >
+                  Voltar para o início
+                </button>
+              )}
             </form>
           </div>
 
-          {/* Footer brand info */}
+          {/* Footer brand info & LGPD notice */}
           <div className="flex flex-col items-center justify-between gap-4 pt-4 border-t border-slate-900 text-xs text-slate-500 lg:flex-row">
-            <p>© {new Date().getFullYear()} Gestão Agro. Todos os direitos reservados.</p>
+            <div className="space-y-1">
+              <p>© {new Date().getFullYear()} Gestão Agro. Todos os direitos reservados.</p>
+              <p className="text-[10px] text-slate-600 max-w-[280px] leading-tight">
+                Ao continuar, você consente com o uso de cookies de sessão e processamento de dados conforme nossa Política de Privacidade.
+              </p>
+            </div>
             <div className="flex items-center gap-1.5 text-[10px] bg-slate-900 px-2.5 py-1 rounded-full border border-slate-800 text-slate-400">
               <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
               Conexão Criptografada SSL
