@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { supabase, STORAGE_BUCKET } from "@/lib/supabase";
+import { uploadFile } from "@/lib/storage";
 import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
@@ -70,63 +70,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const timestamp = Date.now();
-    const sanitizedName = file.name
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-zA-Z0-9._-]/g, "_");
+    let folder = "geral";
+    if (projetoId) folder = `projetos/${projetoId}`;
+    else if (clienteId) folder = `clientes/${clienteId}`;
 
-    let path = "geral";
-    if (projetoId) path = `projetos/${projetoId}`;
-    else if (clienteId) path = `clientes/${clienteId}`;
-
-    const storageName = `${path}/${timestamp}_${sanitizedName}`;
-
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
-
-    const { error: uploadError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(storageName, fileBuffer, {
-        contentType: file.type,
-        cacheControl: "3600",
-        upsert: false,
-      });
-
-    if (uploadError) {
-      let friendlyMessage = `Erro no upload: ${uploadError.message}`;
-      
-      const errMsg = uploadError.message?.toLowerCase() || "";
-      if (
-        errMsg.includes("bucket") || 
-        errMsg.includes("not found") ||
-        errMsg.includes("does not exist")
-      ) {
-        friendlyMessage = `O bucket '${STORAGE_BUCKET}' não foi encontrado no seu Supabase. Por favor, crie um bucket chamado '${STORAGE_BUCKET}' no painel do Supabase Storage e configure as políticas de acesso (RLS) para permitir uploads.`;
-      } else if (errMsg.includes("policy") || errMsg.includes("permission") || errMsg.includes("unauthorized")) {
-        friendlyMessage = `Permissão negada ao enviar para o bucket '${STORAGE_BUCKET}'. Certifique-se de configurar políticas (RLS) no Supabase permitindo INSERT e SELECT para usuários autenticados.`;
-      }
-
+    let uploadResult;
+    try {
+      uploadResult = await uploadFile(file, folder);
+    } catch (uploadError: any) {
       return NextResponse.json(
-        { error: friendlyMessage },
+        { error: `Erro ao salvar arquivo: ${uploadError.message || "Erro interno"}` },
         { status: 500 }
       );
     }
 
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storageName);
+    const { storageName } = uploadResult;
 
+    // Criar o registro no banco com um placeholder temporário para a URL
     const documento = await prisma.documentoUpload.create({
       data: {
         nomeOriginal: file.name,
         nomeStorage: storageName,
-        url: publicUrl,
+        url: `/api/documentos/download?id=PENDING`,
         tamanho: file.size,
         tipo: file.type,
         uploadPorId: session.user.id,
         projetoId: projetoId || undefined,
         clienteId: clienteId || undefined,
         checklistItemId: checklistItemId || undefined,
+      },
+    });
+
+    // Atualiza a URL contendo o ID real gerado pelo banco para a rota de download segura
+    const updatedDocumento = await prisma.documentoUpload.update({
+      where: { id: documento.id },
+      data: {
+        url: `/api/documentos/download?id=${documento.id}`,
       },
     });
 
@@ -144,12 +123,12 @@ export async function POST(request: NextRequest) {
           descricao: `Documento "${file.name}" enviado`,
           projetoId,
           userId: session.user.id,
-          dados: { documentoId: documento.id, nomeOriginal: file.name },
+          dados: JSON.stringify({ documentoId: updatedDocumento.id, nomeOriginal: file.name }),
         },
       });
     }
 
-    return NextResponse.json({ documento }, { status: 201 });
+    return NextResponse.json({ documento: updatedDocumento }, { status: 201 });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json(

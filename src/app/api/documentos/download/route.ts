@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { supabase, STORAGE_BUCKET } from "@/lib/supabase";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,7 +10,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    // Acesso negado para o perfil VISUALIZADOR baixar/visualizar documentos
     if (session.user.role === "VISUALIZADOR") {
       return NextResponse.json(
         { error: "Acesso negado: Perfil visualizador não possui permissão para visualizar ou baixar documentos" },
@@ -33,20 +32,51 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Documento não encontrado" }, { status: 404 });
     }
 
-    // Gerar URL assinada com validade de 60 segundos
-    const { data, error: signedUrlError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .createSignedUrl(documento.nomeStorage, 60);
+    // Registrar o log de auditoria
+    await prisma.historicoEvento.create({
+      data: {
+        tipo: "DOWNLOAD",
+        descricao: `Download do documento "${documento.nomeOriginal}"`,
+        projetoId: documento.projetoId,
+        userId: session.user.id,
+        dados: JSON.stringify({ documentoId: documento.id, nomeOriginal: documento.nomeOriginal }),
+      },
+    });
 
-    if (signedUrlError || !data?.signedUrl) {
-      return NextResponse.json(
-        { error: `Erro ao gerar link de acesso: ${signedUrlError?.message || "URL nula"}` },
-        { status: 500 }
-      );
+    const isCloudflare =
+      process.env.NODE_ENV === "production" ||
+      process.env.CF_PAGES === "1" ||
+      typeof EdgeRuntime !== "undefined";
+
+    const headers = new Headers();
+    headers.set("Content-Type", documento.tipo);
+    headers.set("Content-Disposition", `attachment; filename="${encodeURIComponent(documento.nomeOriginal)}"`);
+
+    if (isCloudflare) {
+      const { env } = getCloudflareContext();
+      const bucket = env.BUCKET as any; // R2Bucket
+      if (!bucket) {
+        return NextResponse.json({ error: "Storage indisponível" }, { status: 500 });
+      }
+
+      const object = await bucket.get(documento.nomeStorage);
+      if (!object) {
+        return NextResponse.json({ error: "Arquivo não encontrado no storage" }, { status: 404 });
+      }
+
+      return new NextResponse(object.body, { headers });
+    } else {
+      const fs = await import("fs/promises");
+      const path = await import("path");
+      
+      const filePath = path.join(process.cwd(), "public", "uploads", documento.nomeStorage);
+      try {
+        const fileBuffer = await fs.readFile(filePath);
+        return new NextResponse(fileBuffer, { headers });
+      } catch (e) {
+        return NextResponse.json({ error: "Arquivo local não encontrado" }, { status: 404 });
+      }
     }
-
-    // Redireciona o navegador para a URL assinada temporária
-    return NextResponse.redirect(data.signedUrl);
   } catch (error) {
     console.error("Download error:", error);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
