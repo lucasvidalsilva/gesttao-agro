@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { Role, KanbanStatus, TipoEvento } from "../src/types";
-import { hash } from "bcryptjs";
+import { hash } from "bcrypt-ts";
 
 const prisma = new PrismaClient();
 
