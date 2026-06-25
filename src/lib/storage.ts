@@ -1,4 +1,4 @@
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { getRequestContext } from "@cloudflare/next-on-pages";
 
 /**
  * Uploads a file.
@@ -22,7 +22,7 @@ export async function uploadFile(
     typeof (globalThis as any).EdgeRuntime !== "undefined";
 
   if (isCloudflare) {
-    const { env } = getCloudflareContext() as any;
+    const { env } = getRequestContext() as any;
     const bucket = env.BUCKET;
     if (!bucket) {
       throw new Error("R2 bucket binding 'BUCKET' not found in Cloudflare environment.");
@@ -61,7 +61,7 @@ export async function deleteFile(storageName: string): Promise<void> {
     typeof (globalThis as any).EdgeRuntime !== "undefined";
 
   if (isCloudflare) {
-    const { env } = getCloudflareContext() as any;
+    const { env } = getRequestContext() as any;
     const bucket = env.BUCKET;
     if (bucket) {
       await bucket.delete(storageName);

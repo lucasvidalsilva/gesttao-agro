@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaD1 } from "@prisma/adapter-d1";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { getRequestContext } from "@cloudflare/next-on-pages";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -17,7 +17,7 @@ function getPrismaInstance(): PrismaClient {
     typeof (globalThis as any).EdgeRuntime !== "undefined";
 
   if (isCloudflare) {
-    const { env } = getCloudflareContext() as any;
+    const { env } = getRequestContext() as any;
     const adapter = new PrismaD1(env.DB);
     prismaInstance = new PrismaClient({ adapter });
   } else {

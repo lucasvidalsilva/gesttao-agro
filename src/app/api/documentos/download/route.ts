@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { getRequestContext } from "@cloudflare/next-on-pages";
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     headers.set("Content-Disposition", `attachment; filename="${encodeURIComponent(documento.nomeOriginal)}"`);
 
     if (isCloudflare) {
-      const { env } = getCloudflareContext() as any;
+      const { env } = getRequestContext() as any;
       const bucket = env.BUCKET;
       if (!bucket) {
         return NextResponse.json({ error: "Storage indisponível" }, { status: 500 });
