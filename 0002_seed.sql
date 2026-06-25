@@ -1,0 +1,1 @@
+INSERT INTO "users" ("id", "name", "email", "passwordHash", "role", "active", "updatedAt") VALUES ('admin001', 'Administrador do Sistema', 'admin@gestaoagro.com.br', '$2b$10$8AS0EMv/WbTr3zu8ttWfB.7orz0P71iAgKEhrkQx7nsUrSFPYMBN.', 'ADMIN', 1, CURRENT_TIMESTAMP);
