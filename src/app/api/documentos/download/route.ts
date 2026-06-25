@@ -46,15 +46,15 @@ export async function GET(request: NextRequest) {
     const isCloudflare =
       process.env.NODE_ENV === "production" ||
       process.env.CF_PAGES === "1" ||
-      typeof EdgeRuntime !== "undefined";
+      typeof (globalThis as any).EdgeRuntime !== "undefined";
 
     const headers = new Headers();
     headers.set("Content-Type", documento.tipo);
     headers.set("Content-Disposition", `attachment; filename="${encodeURIComponent(documento.nomeOriginal)}"`);
 
     if (isCloudflare) {
-      const { env } = getCloudflareContext();
-      const bucket = env.BUCKET as any; // R2Bucket
+      const { env } = getCloudflareContext() as any;
+      const bucket = env.BUCKET;
       if (!bucket) {
         return NextResponse.json({ error: "Storage indisponível" }, { status: 500 });
       }

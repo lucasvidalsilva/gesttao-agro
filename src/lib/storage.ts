@@ -19,11 +19,11 @@ export async function uploadFile(
   const isCloudflare =
     process.env.NODE_ENV === "production" ||
     process.env.CF_PAGES === "1" ||
-    typeof EdgeRuntime !== "undefined";
+    typeof (globalThis as any).EdgeRuntime !== "undefined";
 
   if (isCloudflare) {
-    const { env } = getCloudflareContext();
-    const bucket = env.BUCKET as any; // Bind R2Bucket
+    const { env } = getCloudflareContext() as any;
+    const bucket = env.BUCKET;
     if (!bucket) {
       throw new Error("R2 bucket binding 'BUCKET' not found in Cloudflare environment.");
     }
@@ -58,11 +58,11 @@ export async function deleteFile(storageName: string): Promise<void> {
   const isCloudflare =
     process.env.NODE_ENV === "production" ||
     process.env.CF_PAGES === "1" ||
-    typeof EdgeRuntime !== "undefined";
+    typeof (globalThis as any).EdgeRuntime !== "undefined";
 
   if (isCloudflare) {
-    const { env } = getCloudflareContext();
-    const bucket = env.BUCKET as any;
+    const { env } = getCloudflareContext() as any;
+    const bucket = env.BUCKET;
     if (bucket) {
       await bucket.delete(storageName);
     }

@@ -21,7 +21,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { KANBAN_COLUMNS } from '@/lib/kanban-rules';
 import { formatMoeda, formatCPFCNPJ } from '@/utils/format';
-import type { TipoEvento } from '@prisma/client';
+import type { TipoEvento } from '@/types';
 
 type ProjetoDetalhe = Awaited<ReturnType<typeof buscarProjetoDetalhe>>;
 
@@ -490,7 +490,7 @@ export function ProjetoDetailSheet({
                   ) : (
                     <div className="space-y-0">
                       {projeto.historicos.map((evento, index) => {
-                        const cfg = getEventoConfig(evento.tipo);
+                        const cfg = getEventoConfig(evento.tipo as TipoEvento);
                         const isLast =
                           index === projeto.historicos.length - 1;
 

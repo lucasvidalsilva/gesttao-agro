@@ -110,19 +110,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             tipo: "AUTENTICACAO",
             descricao: `Login efetuado com sucesso por ${user.name || user.email}`,
             userId: user.id,
-            dados: { email: user.email },
+            dados: JSON.stringify({ email: user.email }),
           },
         });
       }
     },
-    async signOut({ token }) {
+    async signOut(message: any) {
+      const token = message?.token;
       if (token?.id) {
         await prisma.historicoEvento.create({
           data: {
             tipo: "AUTENTICACAO",
             descricao: `Sessão encerrada (Logout) por ${token.name || token.email}`,
             userId: token.id as string,
-            dados: { email: token.email },
+            dados: JSON.stringify({ email: token.email }),
           },
         });
       }

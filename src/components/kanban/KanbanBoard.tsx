@@ -12,7 +12,7 @@ import { KANBAN_COLUMNS, isTransicaoPermitida, getModalParaTransicao } from '@/l
 import { moverCard, reordenarCards } from '@/features/projetos/actions';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
-import { KanbanStatus } from '@prisma/client';
+import { KanbanStatus } from '@/types';
 import type { KanbanColumn as KanbanColumnType, ProjetoCard } from '@/types';
 
 interface ClienteOption {

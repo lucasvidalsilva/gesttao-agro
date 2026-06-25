@@ -90,14 +90,14 @@ async function generateTokenAtCounter(secretBytes: Uint8Array, counter: number):
   // Import HMAC key
   const key = await crypto.subtle.importKey(
     "raw",
-    secretBytes,
+    secretBytes as any,
     { name: "HMAC", hash: "SHA-1" },
     false,
     ["sign"]
   );
 
   // Sign time bytes
-  const signatureBuffer = await crypto.subtle.sign("HMAC", key, timeBytes);
+  const signatureBuffer = await crypto.subtle.sign("HMAC", key, timeBytes as any);
   const signature = new Uint8Array(signatureBuffer);
 
   // Dynamic truncation

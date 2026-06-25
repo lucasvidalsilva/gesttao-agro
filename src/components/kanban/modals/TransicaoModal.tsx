@@ -5,7 +5,7 @@ import { X, Loader2, AlertCircle, Upload, Check, FileText } from 'lucide-react';
 import { moverCard } from '@/features/projetos/actions';
 import { toast } from 'sonner';
 import { KANBAN_COLUMNS } from '@/lib/kanban-rules';
-import type { KanbanStatus } from '@prisma/client';
+import type { KanbanStatus } from '@/types';
 
 type ModalType =
   | 'analise'

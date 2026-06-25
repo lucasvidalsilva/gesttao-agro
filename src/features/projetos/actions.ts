@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
-import { KanbanStatus } from "@/types";
+import { KanbanStatus, ProjetoCard, ProjetoComRelacoes } from "@/types";
 import {
   criarProjetoSchema,
   transicaoAnaliseSchema,
@@ -327,7 +327,7 @@ export async function buscarProjetos(filtros?: {
   });
 
   // Em SQLite, os campos status e enums são string, o TypeScript resolve com typecast
-  return projetos as any;
+  return projetos as unknown as ProjetoCard[];
 }
 
 export async function buscarProjetoDetalhe(projetoId: string) {
@@ -376,7 +376,7 @@ export async function buscarProjetoDetalhe(projetoId: string) {
     return null;
   }
 
-  return projeto as any;
+  return projeto as unknown as ProjetoComRelacoes;
 }
 
 export async function reordenarCards(
