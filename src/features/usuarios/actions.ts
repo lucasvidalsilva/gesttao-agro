@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
-import bcrypt from "bcryptjs";
+import { hash } from "bcrypt-ts";
 import { criarUsuarioSchema, resetarSenhaSchema } from "@/features/projetos/validations";
 
 type ActionResult = {
@@ -41,7 +41,7 @@ export async function criarUsuario(formData: FormData): Promise<ActionResult> {
     return { success: false, error: "E-mail já cadastrado" };
   }
 
-  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+  const passwordHash = await hash(parsed.data.password, 12);
 
   const usuario = await prisma.user.create({
     data: {
@@ -92,7 +92,7 @@ export async function resetarSenha(formData: FormData): Promise<ActionResult> {
     return { success: false, error: "Usuário não encontrado" };
   }
 
-  const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
+  const passwordHash = await hash(parsed.data.newPassword, 12);
 
   const updatedUser = await prisma.user.update({
     where: { id: parsed.data.userId },
