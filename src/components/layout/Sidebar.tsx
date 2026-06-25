@@ -12,6 +12,7 @@ import {
   Leaf,
   User,
   Shield,
+  Settings,
 } from "lucide-react";
 
 interface NavItem {
@@ -39,6 +40,12 @@ const adminNavigationItems: NavItem[] = [
     label: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
+    adminOnly: true,
+  },
+  {
+    label: "Configurações",
+    href: "/configuracoes",
+    icon: Settings,
     adminOnly: true,
   },
   {

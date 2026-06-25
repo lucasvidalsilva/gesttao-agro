@@ -93,8 +93,18 @@ export async function criarProjeto(formData: FormData): Promise<ActionResult> {
     },
   });
 
+  const tiposObrigatorios = await prisma.tipoDocumento.findMany({
+    where: { ativo: true, obrigatorio: true },
+  });
+  const documentosCliente = await prisma.documentoUpload.findMany({
+    where: { clienteId: parsed.data.clienteId },
+    select: { tipoDocumentoId: true },
+  });
+  const enviadoIds = new Set(documentosCliente.map(d => d.tipoDocumentoId).filter(Boolean));
+  const missingDocuments = tiposObrigatorios.filter(t => !enviadoIds.has(t.id));
+
   revalidatePath("/projetos");
-  return { success: true, data: { projetoId: projeto.id } };
+  return { success: true, data: { projetoId: projeto.id, missingDocuments, clienteId: parsed.data.clienteId } };
 }
 
 export async function moverCard(
@@ -156,14 +166,20 @@ export async function moverCard(
       };
     }
 
-    const obrigatorios = projeto.checklistItems.filter(
-      (item) => item.obrigatorio
-    );
-    const naoEnviados = obrigatorios.filter((item) => !item.enviado);
+    const tiposObrigatorios = await prisma.tipoDocumento.findMany({
+      where: { ativo: true, obrigatorio: true },
+    });
+    const documentosCliente = await prisma.documentoUpload.findMany({
+      where: { clienteId: projeto.clienteId },
+      select: { tipoDocumentoId: true },
+    });
+    const enviadoIds = new Set(documentosCliente.map(d => d.tipoDocumentoId).filter(Boolean));
+    const naoEnviados = tiposObrigatorios.filter(t => !enviadoIds.has(t.id));
+
     if (naoEnviados.length > 0) {
       return {
         success: false,
-        error: `Documentos obrigatórios pendentes: ${naoEnviados.map((d) => d.nome).join(", ")}`,
+        error: `Documentos obrigatórios do cliente pendentes: ${naoEnviados.map((d) => d.nome).join(", ")}`,
       };
     }
 

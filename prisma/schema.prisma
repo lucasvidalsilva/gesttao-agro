@@ -143,12 +143,27 @@ model DocumentoUpload {
   projetoId       String?
   clienteId       String?
   checklistItemId String?             @unique
+  tipoDocumentoId String?
+  tipoDocumento   TipoDocumento?      @relation(fields: [tipoDocumentoId], references: [id])
   checklistItem   DocumentoChecklist? @relation("ChecklistDocumento", fields: [checklistItemId], references: [id])
   cliente         Cliente?            @relation("ClienteDocumentos", fields: [clienteId], references: [id], onDelete: Cascade)
   projeto         Projeto?            @relation("ProjetoDocumentos", fields: [projetoId], references: [id], onDelete: Cascade)
   uploadPor       User                @relation(fields: [uploadPorId], references: [id])
 
   @@map("documento_uploads")
+}
+
+model TipoDocumento {
+  id          String            @id @default(cuid())
+  nome        String
+  descricao   String?
+  obrigatorio Boolean           @default(true)
+  ativo       Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  documentos  DocumentoUpload[]
+
+  @@map("tipos_documentos")
 }
 
 model TransicaoKanban {

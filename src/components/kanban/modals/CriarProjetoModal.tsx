@@ -14,12 +14,14 @@ interface ClienteOption {
 interface CriarProjetoModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: (data: { projetoId: string; clienteId?: string; missingDocuments?: any[] }) => void;
   clientes: ClienteOption[];
 }
 
 export function CriarProjetoModal({
   isOpen,
   onClose,
+  onSuccess,
   clientes,
 }: CriarProjetoModalProps) {
   const [nome, setNome] = useState('');
@@ -129,6 +131,9 @@ export function CriarProjetoModal({
 
     if (result.success) {
       toast.success('Projeto criado com sucesso!');
+      if (onSuccess && result.data) {
+        onSuccess(result.data as { projetoId: string; clienteId?: string; missingDocuments?: any[] });
+      }
       onClose();
     } else {
       setErro(result.error ?? 'Erro ao criar projeto');

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { buscarClienteDetalhe } from "@/features/clientes/actions";
+import { prisma } from "@/lib/prisma";
 import ClienteDetailClient from "./ClienteDetailClient";
 
 interface ClienteDetailPageProps {
@@ -29,5 +30,10 @@ export default async function ClienteDetailPage({ params }: ClienteDetailPagePro
     notFound();
   }
 
-  return <ClienteDetailClient cliente={cliente} />;
+  const tiposDocumentos = await prisma.tipoDocumento.findMany({
+    where: { ativo: true },
+    orderBy: { nome: "asc" },
+  });
+
+  return <ClienteDetailClient cliente={cliente} tiposDocumentos={tiposDocumentos} />;
 }

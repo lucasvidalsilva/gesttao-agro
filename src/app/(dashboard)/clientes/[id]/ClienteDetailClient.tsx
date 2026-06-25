@@ -42,6 +42,14 @@ interface DocumentoItem {
   tamanho: number;
   tipo: string;
   createdAt: Date | string;
+  tipoDocumentoId?: string | null;
+}
+
+export interface TipoDocumento {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  obrigatorio: boolean;
 }
 
 interface ClienteData {
@@ -61,6 +69,7 @@ interface ClienteData {
 
 interface ClienteDetailClientProps {
   cliente: ClienteData;
+  tiposDocumentos: TipoDocumento[];
 }
 
 function getStatusConfig(status: KanbanStatus) {
@@ -73,7 +82,7 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function ClienteDetailClient({ cliente }: ClienteDetailClientProps) {
+export default function ClienteDetailClient({ cliente, tiposDocumentos }: ClienteDetailClientProps) {
   const [showEditForm, setShowEditForm] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -81,7 +90,7 @@ export default function ClienteDetailClient({ cliente }: ClienteDetailClientProp
   const router = useRouter();
 
   const handleFileUpload = useCallback(
-    async (files: FileList | null) => {
+    async (files: FileList | null, tipoDocumentoId?: string) => {
       if (!files || files.length === 0) return;
 
       setIsUploading(true);
@@ -92,6 +101,9 @@ export default function ClienteDetailClient({ cliente }: ClienteDetailClientProp
           const formData = new FormData();
           formData.append("file", file);
           formData.append("clienteId", cliente.id);
+          if (tipoDocumentoId) {
+            formData.append("tipoDocumentoId", tipoDocumentoId);
+          }
 
           const response = await fetch("/api/upload", {
             method: "POST",
@@ -302,6 +314,77 @@ export default function ClienteDetailClient({ cliente }: ClienteDetailClientProp
           </span>
         </div>
 
+        {/* Documentos Parametrizados */}
+        {tiposDocumentos && tiposDocumentos.length > 0 && (
+          <div className="mb-6 space-y-3">
+            <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">Documentos Exigidos</h3>
+            {tiposDocumentos.map((tipo) => {
+              const docEnviado = cliente.documentos.find(d => d.tipoDocumentoId === tipo.id);
+              return (
+                <div key={tipo.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border p-4 bg-surface-secondary/40">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-text-primary">{tipo.nome}</span>
+                      {tipo.obrigatorio && (
+                        <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-700 border border-red-200">
+                          Obrigatório
+                        </span>
+                      )}
+                      {docEnviado ? (
+                        <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700 border border-green-200">
+                          Enviado
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 border border-amber-200">
+                          Pendente
+                        </span>
+                      )}
+                    </div>
+                    {tipo.descricao && <p className="text-xs text-text-tertiary">{tipo.descricao}</p>}
+                    
+                    {docEnviado && (
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-text-secondary">
+                        <FileText className="h-3.5 w-3.5" />
+                        <span className="truncate">{docEnviado.nomeOriginal}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2 shrink-0">
+                    {docEnviado ? (
+                      <a
+                        href={`/api/documentos/download?id=${docEnviado.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary hover:bg-brand-50 hover:text-brand-600 transition-colors"
+                        title="Baixar Documento"
+                      >
+                        <Download className="h-4 w-4" />
+                      </a>
+                    ) : (
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full"
+                          onChange={(e) => handleFileUpload(e.target.files, tipo.id)}
+                          title="Fazer Upload"
+                        />
+                        <button className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-brand-700 transition-colors">
+                          <Upload className="h-3.5 w-3.5" />
+                          Enviar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3 mt-8">Outros Documentos</h3>
+
         {/* Upload Zone */}
         <div
           onDragOver={handleDragOver}
@@ -342,18 +425,18 @@ export default function ClienteDetailClient({ cliente }: ClienteDetailClientProp
         </div>
 
         {/* Documents List */}
-        {cliente.documentos.length === 0 ? (
+        {cliente.documentos.filter(d => !d.tipoDocumentoId).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-tertiary">
               <FileText className="h-6 w-6 text-text-tertiary" />
             </div>
             <p className="mt-3 text-sm font-medium text-text-secondary">
-              Nenhum documento enviado ainda.
+              Nenhum outro documento enviado.
             </p>
           </div>
         ) : (
           <div className="space-y-2">
-            {cliente.documentos.map((doc) => (
+            {cliente.documentos.filter(d => !d.tipoDocumentoId).map((doc) => (
               <div
                 key={doc.id}
                 className="group flex items-center justify-between rounded-xl border border-border p-3.5 transition-all duration-200 hover:border-brand-200 hover:bg-brand-50/30"

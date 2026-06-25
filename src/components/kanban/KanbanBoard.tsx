@@ -8,6 +8,7 @@ import {
 } from '@hello-pangea/dnd';
 import { KanbanColumn } from '@/components/kanban/KanbanColumn';
 import { CriarProjetoModal } from '@/components/kanban/modals/CriarProjetoModal';
+import { UploadDocumentosPendentesModal } from '@/components/kanban/modals/UploadDocumentosPendentesModal';
 import { KANBAN_COLUMNS, isTransicaoPermitida, getModalParaTransicao } from '@/lib/kanban-rules';
 import { moverCard, reordenarCards } from '@/features/projetos/actions';
 import { toast } from 'sonner';
@@ -82,6 +83,10 @@ export function KanbanBoard({
   const [activeModal, setActiveModal] = useState<ActiveModal | null>(null);
   const [selectedProjeto, setSelectedProjeto] = useState<string | null>(null);
   const [showCriarModal, setShowCriarModal] = useState(false);
+  const [missingDocsModalData, setMissingDocsModalData] = useState<{
+    clienteId: string;
+    documentosPendentes: any[];
+  } | null>(null);
 
   useEffect(() => {
     setColumns(buildColumns(projetos));
@@ -278,8 +283,29 @@ export function KanbanBoard({
       <CriarProjetoModal
         isOpen={showCriarModal}
         onClose={() => setShowCriarModal(false)}
+        onSuccess={(data) => {
+          if (data.missingDocuments && data.missingDocuments.length > 0 && data.clienteId) {
+            setMissingDocsModalData({
+              clienteId: data.clienteId,
+              documentosPendentes: data.missingDocuments,
+            });
+          }
+        }}
         clientes={clientes}
       />
+
+      {/* Upload Pendentes Modal */}
+      {missingDocsModalData && (
+        <UploadDocumentosPendentesModal
+          isOpen={true}
+          onClose={() => setMissingDocsModalData(null)}
+          clienteId={missingDocsModalData.clienteId}
+          documentosPendentes={missingDocsModalData.documentosPendentes}
+          onUploadSuccess={() => {
+            router.refresh();
+          }}
+        />
+      )}
 
       {/* Transition Modal */}
       {activeModal && (

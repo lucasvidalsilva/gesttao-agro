@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
     const projetoId = formData.get("projetoId") as string | null;
     const clienteId = formData.get("clienteId") as string | null;
     const checklistItemId = formData.get("checklistItemId") as string | null;
+    const tipoDocumentoId = formData.get("tipoDocumentoId") as string | null;
 
     if (!file) {
       return NextResponse.json(
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
         projetoId: projetoId || undefined,
         clienteId: clienteId || undefined,
         checklistItemId: checklistItemId || undefined,
+        tipoDocumentoId: tipoDocumentoId || undefined,
       },
     });
 
