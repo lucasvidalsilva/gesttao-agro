@@ -2,12 +2,3 @@ name = "gestao-agro"
 compatibility_date = "2024-12-30"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "gestao-agro-db"
-database_id = "864df2b1-cf84-486a-85b2-32bde6f09ceb"
-
-[[r2_buckets]]
-binding = "BUCKET"
-bucket_name = "gestao-agro-documentos"
