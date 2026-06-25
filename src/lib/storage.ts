@@ -33,8 +33,8 @@ export async function uploadFile(
     });
   } else {
     // Dynamic import to prevent bundler errors on the Edge
-    const fs = await import("fs/promises");
-    const path = await import("path");
+    const fs = await import(/* webpackIgnore: true */ "fs/promises");
+    const path = await import(/* webpackIgnore: true */ "path");
     
     const uploadDir = path.join(process.cwd(), "public", "uploads", folder);
     await fs.mkdir(uploadDir, { recursive: true });
@@ -68,8 +68,8 @@ export async function deleteFile(storageName: string): Promise<void> {
     }
   } else {
     try {
-      const fs = await import("fs/promises");
-      const path = await import("path");
+      const fs = await import(/* webpackIgnore: true */ "fs/promises");
+      const path = await import(/* webpackIgnore: true */ "path");
       
       const filePath = path.join(process.cwd(), "public", "uploads", storageName);
       await fs.unlink(filePath);

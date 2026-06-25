@@ -66,8 +66,8 @@ export async function GET(request: NextRequest) {
 
       return new NextResponse(object.body, { headers });
     } else {
-      const fs = await import("fs/promises");
-      const path = await import("path");
+      const fs = await import(/* webpackIgnore: true */ "fs/promises");
+      const path = await import(/* webpackIgnore: true */ "path");
       
       const filePath = path.join(process.cwd(), "public", "uploads", documento.nomeStorage);
       try {
