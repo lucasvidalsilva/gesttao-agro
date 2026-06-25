@@ -4,3 +4,5 @@ export default function Home() {
   redirect("/projetos");
 }
 
+
+export const runtime = 'edge';

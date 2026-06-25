@@ -14,3 +14,5 @@ export default async function ConfiguracoesPage() {
 
   return <ConfiguracoesClient initialTiposDocumentos={tiposDocumentos} />;
 }
+
+export const runtime = 'edge';

@@ -94,3 +94,5 @@ export default function PrivacidadePage() {
     </div>
   );
 }
+
+export const runtime = 'edge';

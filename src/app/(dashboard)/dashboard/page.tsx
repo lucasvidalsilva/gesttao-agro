@@ -12,3 +12,5 @@ export default async function DashboardPage() {
   const data = await buscarDashboardData();
   return <DashboardClient data={data} />;
 }
+
+export const runtime = 'edge';

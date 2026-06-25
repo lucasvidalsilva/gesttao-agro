@@ -286,3 +286,5 @@ export default function PerfilPage() {
     </div>
   );
 }
+
+export const runtime = 'edge';

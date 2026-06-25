@@ -37,3 +37,5 @@ export default async function ClienteDetailPage({ params }: ClienteDetailPagePro
 
   return <ClienteDetailClient cliente={cliente} tiposDocumentos={tiposDocumentos} />;
 }
+
+export const runtime = 'edge';

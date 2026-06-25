@@ -12,3 +12,5 @@ export default async function ClientesPage() {
 
   return <ClientesPageClient clientes={clientes} />;
 }
+
+export const runtime = 'edge';

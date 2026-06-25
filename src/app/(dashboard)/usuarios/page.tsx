@@ -12,3 +12,5 @@ export default async function UsuariosPage() {
   const usuarios = await buscarUsuarios();
   return <UsuariosClient usuarios={usuarios} />;
 }
+
+export const runtime = 'edge';
