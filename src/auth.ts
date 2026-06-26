@@ -15,6 +15,7 @@ export class InvalidMfaError extends CredentialsSignin {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: process.env.AUTH_SECRET || "fallback_secret_to_prevent_500_error_on_edge",
   trustHost: true,
   adapter: PrismaAdapter(prisma),
   session: {
