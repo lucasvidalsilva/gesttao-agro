@@ -8,4 +8,9 @@ binding = "DB"
 database_name = "gestao-agro-db"
 database_id = "8da3c23f-f3ad-4739-ba88-d6b2d96dde3c"
 
+[vars]
+AUTH_SECRET = "X9kP2mR5vL8tN4qW7zC1yB6hF3jD9gM2"
+AUTH_URL = "https://gestao-agro.pages.dev"
+NEXTAUTH_URL = "https://gestao-agro.pages.dev"
+
 
