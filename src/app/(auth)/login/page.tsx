@@ -280,4 +280,4 @@ export default function LoginPage() {
   );
 }
 
-export const runtime = 'edge';
+

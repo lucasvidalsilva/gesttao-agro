@@ -287,4 +287,4 @@ export default function PerfilPage() {
   );
 }
 
-export const runtime = 'edge';
+

@@ -3,17 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build --webpack",
+    "sync": "node scripts/sync-prisma.js",
+    "dev": "npm run sync && npx prisma generate && next dev",
+    "build": "npm run sync && npx prisma generate && next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
-    "@cloudflare/next-on-pages": "^1.13.16",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.4.0",
-    "@prisma/adapter-d1": "^5.22.0",
     "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.106.1",
     "bcrypt-ts": "^8.0.1",
@@ -31,7 +30,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.19.11",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
@@ -42,8 +40,7 @@
     "prisma": "^5.22.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.3",
-    "typescript": "^5",
-    "wrangler": "^4.103.0"
+    "typescript": "^5"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

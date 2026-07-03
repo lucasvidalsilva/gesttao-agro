@@ -13,4 +13,4 @@ export default async function UsuariosPage() {
   return <UsuariosClient usuarios={usuarios} />;
 }
 
-export const runtime = 'edge';
+

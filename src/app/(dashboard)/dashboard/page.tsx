@@ -13,4 +13,4 @@ export default async function DashboardPage() {
   return <DashboardClient data={data} />;
 }
 
-export const runtime = 'edge';
+

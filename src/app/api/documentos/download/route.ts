@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { createClient } from "@supabase/supabase-js";
+import fs from "fs/promises";
+import path from "path";
+
+// Inicialização Supabase
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseKey);
+const BUCKET_NAME = "documentos";
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,32 +51,24 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const isCloudflare =
-      process.env.NODE_ENV === "production" ||
-      process.env.CF_PAGES === "1" ||
-      typeof (globalThis as any).EdgeRuntime !== "undefined";
-
     const headers = new Headers();
     headers.set("Content-Type", documento.tipo);
     headers.set("Content-Disposition", `attachment; filename="${encodeURIComponent(documento.nomeOriginal)}"`);
 
-    if (isCloudflare) {
-      const { env } = getRequestContext() as any;
-      const bucket = env.BUCKET;
-      if (!bucket) {
-        return NextResponse.json({ error: "Storage indisponível" }, { status: 500 });
-      }
+    const mode = process.env.DEPLOYMENT_MODE || "on-premise";
 
-      const object = await bucket.get(documento.nomeStorage);
-      if (!object) {
+    if (mode === "production") {
+      const { data, error } = await supabase.storage
+        .from(BUCKET_NAME)
+        .download(documento.nomeStorage);
+
+      if (error || !data) {
+        console.error("Supabase download error:", error);
         return NextResponse.json({ error: "Arquivo não encontrado no storage" }, { status: 404 });
       }
 
-      return new NextResponse(object.body, { headers });
+      return new NextResponse(data, { headers });
     } else {
-      const fs = await import(/* webpackIgnore: true */ "fs/promises");
-      const path = await import(/* webpackIgnore: true */ "path");
-      
       const filePath = path.join(process.cwd(), "public", "uploads", documento.nomeStorage);
       try {
         const fileBuffer = await fs.readFile(filePath);
@@ -82,5 +82,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
   }
 }
-
-export const runtime = 'edge';

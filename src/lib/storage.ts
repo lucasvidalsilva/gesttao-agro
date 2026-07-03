@@ -1,9 +1,17 @@
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { createClient } from "@supabase/supabase-js";
+import fs from "fs/promises";
+import path from "path";
+
+// Inicialização do Supabase (apenas para modo production)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseKey);
+const BUCKET_NAME = "documentos";
 
 /**
  * Uploads a file.
- * In production/Cloudflare environment, saves to R2 bucket.
- * In development environment, saves to the local filesystem under public/uploads.
+ * In production, saves to Supabase Storage.
+ * In on-premise, saves to the local filesystem under public/uploads.
  */
 export async function uploadFile(
   file: File,
@@ -16,26 +24,23 @@ export async function uploadFile(
     .replace(/[^a-zA-Z0-9._-]/g, "_");
   const storageName = `${folder}/${timestamp}_${sanitizedName}`;
 
-  const isCloudflare =
-    process.env.NODE_ENV === "production" ||
-    process.env.CF_PAGES === "1" ||
-    typeof (globalThis as any).EdgeRuntime !== "undefined";
+  const mode = process.env.DEPLOYMENT_MODE || "on-premise";
 
-  if (isCloudflare) {
-    const { env } = getRequestContext() as any;
-    const bucket = env.BUCKET;
-    if (!bucket) {
-      throw new Error("R2 bucket binding 'BUCKET' not found in Cloudflare environment.");
-    }
+  if (mode === "production") {
     const fileBuffer = await file.arrayBuffer();
-    await bucket.put(storageName, fileBuffer, {
-      httpMetadata: { contentType: file.type },
-    });
+    const { error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(storageName, fileBuffer, {
+        contentType: file.type,
+        upsert: true,
+      });
+
+    if (error) {
+      console.error("Supabase Upload Error:", error);
+      throw new Error(`Erro ao fazer upload no Supabase: ${error.message}`);
+    }
   } else {
-    // Dynamic import to prevent bundler errors on the Edge
-    const fs = await import(/* webpackIgnore: true */ "fs/promises");
-    const path = await import(/* webpackIgnore: true */ "path");
-    
+    // Local File System (On-Premise)
     const uploadDir = path.join(process.cwd(), "public", "uploads", folder);
     await fs.mkdir(uploadDir, { recursive: true });
     
@@ -51,30 +56,28 @@ export async function uploadFile(
 
 /**
  * Deletes a file.
- * In production/Cloudflare, removes from R2.
- * In development, removes from the local filesystem.
+ * In production, removes from Supabase Storage.
+ * In on-premise, removes from the local filesystem.
  */
 export async function deleteFile(storageName: string): Promise<void> {
-  const isCloudflare =
-    process.env.NODE_ENV === "production" ||
-    process.env.CF_PAGES === "1" ||
-    typeof (globalThis as any).EdgeRuntime !== "undefined";
+  const mode = process.env.DEPLOYMENT_MODE || "on-premise";
 
-  if (isCloudflare) {
-    const { env } = getRequestContext() as any;
-    const bucket = env.BUCKET;
-    if (bucket) {
-      await bucket.delete(storageName);
+  if (mode === "production") {
+    const { error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .remove([storageName]);
+      
+    if (error) {
+      console.warn("Could not delete file from Supabase storage:", error);
     }
   } else {
+    // Local File System (On-Premise)
     try {
-      const fs = await import(/* webpackIgnore: true */ "fs/promises");
-      const path = await import(/* webpackIgnore: true */ "path");
-      
       const filePath = path.join(process.cwd(), "public", "uploads", storageName);
       await fs.unlink(filePath);
     } catch (e) {
-      console.warn("Could not delete local file from development storage:", e);
+      console.warn("Could not delete local file from on-premise storage:", e);
     }
   }
 }
+
